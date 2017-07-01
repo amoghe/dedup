@@ -30,28 +30,33 @@ var (
 			Bool()
 	memProfile = kingpin.Flag("memprofile", "Enable memory profiling").
 			Bool()
-	// outFile = kingpin.Flag("stdout", "Write to stdout, keep original").
-	// 	Short('c').
-	// 	Bool()
+	toStdout = kingpin.Flag("stdout", "Write to stdout").
+			Short('c').
+			Bool()
+	// TODO: Add positional arg, then deal appropriately with toStdout
 	// inputFile = kingpin.Arg("infile", "File to be deduplicated").
 	// 		File()
+
+	inFile  io.ReadCloser
+	outFile io.WriteCloser
 )
 
 func main() {
-	kingpin.Parse()
-	validateArgsOrDie()
+	parseArgsOrDie()
 	if *memProfile {
 		defer profile.Start(profile.MemProfile).Stop()
 	}
 	if *reduplicate {
-		doRedup(os.Stdin, os.Stdout)
+		doRedup(os.Stdin, outFile)
 	} else {
-		doDedup(os.Stdin, os.Stdout)
+		doDedup(os.Stdin, outFile)
 	}
 }
 
-// validate command line arguments, fail on bad args
-func validateArgsOrDie() {
+// Parse and validate command line arguments, fail on bad args
+func parseArgsOrDie() {
+	kingpin.Parse()
+
 	if *windowSize <= 1 {
 		log.Fatalln("Window too small (<=1)")
 	}
@@ -59,6 +64,7 @@ func validateArgsOrDie() {
 	if *zeroBits <= 1 {
 		log.Fatalln("Mask size too small (<=1)")
 	}
+
 }
 
 // Performs deduplication (compression)
