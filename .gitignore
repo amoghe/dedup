@@ -1,2 +1,5 @@
 # Ignore the binary
 dedup
+
+# Ignore WIP
+codec/**
