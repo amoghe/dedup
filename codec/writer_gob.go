@@ -47,6 +47,15 @@ func (g *GobWriter) Write(seg []byte, id uint64, seen bool) error {
 	return nil
 }
 
+// WriteSignature a signature message to the output stream
+func (g *GobWriter) WriteSignature(segHash string) error {
+	err := g.emit(&GobMessage{
+		Type:     GobMessageSig,
+		DefBytes: []byte(segHash),
+	})
+	return err
+}
+
 // Close allows GobWriter to satisfy SegmentWriter interface
 func (g *GobWriter) Close() {
 	// TODO: w.output.Flush()
@@ -66,6 +75,8 @@ const (
 	GobMessageRef = 1
 	// GobMessageDef indicates this is a Def message
 	GobMessageDef = 2
+	// GobMessageSig indicates this is a Sig message
+	GobMessageSig = 3
 )
 
 // GobMessage is the message that we write to the output stream.

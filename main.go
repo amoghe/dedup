@@ -36,6 +36,9 @@ var (
 	// TODO: Add positional arg, then deal appropriately with toStdout
 	// inputFile = kingpin.Arg("infile", "File to be deduplicated").
 	// 		File()
+	makeSig = kingpin.Flag("signature", "Make a signature file").
+		Short('s').
+		Bool()
 
 	inFile  io.ReadCloser
 	outFile io.WriteCloser
@@ -46,7 +49,9 @@ func main() {
 	if *memProfile {
 		defer profile.Start(profile.MemProfile).Stop()
 	}
-	if *reduplicate {
+	if *makeSig {
+		doSignatures(os.Stdin, os.Stdout)
+	} else if *reduplicate {
 		doRedup(os.Stdin, outFile)
 	} else {
 		doDedup(os.Stdin, outFile)
@@ -64,17 +69,14 @@ func parseArgsOrDie() {
 	if *zeroBits <= 1 {
 		log.Fatalln("Mask size too small (<=1)")
 	}
-
 }
 
 // Performs deduplication (compression)
 func doDedup(in io.ReadCloser, out io.WriteCloser) {
-
 	dedup := NewDeduplicator(*windowSize, uint64((1<<*zeroBits)-1), out)
 	if err := dedup.Do(in); err != nil {
 		log.Fatalln("Failed to parse file:", err)
 	}
-
 	// Print stats (TODO: make this optional)
 	_ = dedup.stats.Print(os.Stderr)
 }
@@ -83,5 +85,13 @@ func doDedup(in io.ReadCloser, out io.WriteCloser) {
 func doRedup(in io.ReadCloser, out io.WriteCloser) {
 	if err := codec.NewGobReader(in, out).Reduplicate(); err != nil {
 		log.Fatalln("Failed to redup", err)
+	}
+}
+
+// Makes a signature file
+func doSignatures(in io.ReadCloser, out io.WriteCloser) {
+	sm := NewSigMaker(*windowSize, uint64((1<<*zeroBits)-1), out)
+	if err := sm.Do(in); err != nil {
+		log.Fatalln("Failed to generate signatures:", err)
 	}
 }
