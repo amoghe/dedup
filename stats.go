@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"hash"
 	"io"
-	"log"
 	"sync/atomic"
 
 	"github.com/montanaflynn/stats"
@@ -73,7 +72,6 @@ func (s ParseStats) Print(out io.Writer) error {
 	for _, s := range s.SegLengths {
 		segLens = append(segLens, float64(s))
 	}
-	log.Println("len seglens:", len(segLens))
 
 	med, err := stats.Median(segLens)
 	if err != nil {
