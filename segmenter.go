@@ -59,12 +59,12 @@ func (s Segmenter) SegmentFile(file io.ReadCloser) error {
 		bytesRead++
 
 		// Process at least WindowSize bytes since last cutpoint
-		if len(curSegment) <= int(s.WindowSize) {
+		if uint64(len(curSegment)) <= s.WindowSize {
 			continue
 		}
 
 		// If this is a cutpoint, process the curSegment
-		if (len(curSegment) > maxSegmentLength) || ((uint64(sum) & s.Mask) == 0) {
+		if (len(curSegment) >= maxSegmentLength) || ((uint64(sum) & s.Mask) == 0) {
 			if err := s.SegHandler.Handle(curSegment); err != nil {
 				return err
 			}
