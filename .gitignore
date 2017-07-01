@@ -2,4 +2,4 @@
 dedup
 
 # Ignore WIP
-codec/**
+codec/*bak
