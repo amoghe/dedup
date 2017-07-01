@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/sha512"
 	"io"
 	"log"
 	"os"
@@ -40,46 +39,33 @@ var (
 
 func main() {
 	kingpin.Parse()
-
+	validateArgsOrDie()
 	if *memProfile {
 		defer profile.Start(profile.MemProfile).Stop()
 	}
-
-	doRedup := func() {
-		r := codec.NewGobReader(os.Stdin, os.Stdout)
-		if err := r.Reduplicate(); err != nil {
-			log.Fatalln("Failed to redup", err)
-		}
-	}
-
 	if *reduplicate {
-		doRedup()
+		doRedup(os.Stdin, os.Stdout)
 	} else {
-		doDedup()
+		doDedup(os.Stdin, os.Stdout)
 	}
 }
 
-//
-// Performs deduplication (compression)
-//
-func doDedup() {
-
-	// Setup window size
+// validate command line arguments, fail on bad args
+func validateArgsOrDie() {
 	if *windowSize <= 1 {
 		log.Fatalln("Window too small (<=1)")
 	}
 
-	// Setup bitmask
 	if *zeroBits <= 1 {
 		log.Fatalln("Mask size too small (<=1)")
 	}
-	mask := uint64((1 << *zeroBits) - 1)
+}
 
-	// Setup the Segmenter
-	dedup := NewDeduplicator(*windowSize, mask, os.Stdout)
+// Performs deduplication (compression)
+func doDedup(in io.ReadCloser, out io.WriteCloser) {
 
-	// Segment the file
-	if err := dedup.Do(os.Stdin); err != nil {
+	dedup := NewDeduplicator(*windowSize, uint64((1<<*zeroBits)-1), out)
+	if err := dedup.Do(in); err != nil {
 		log.Fatalln("Failed to parse file:", err)
 	}
 
@@ -87,38 +73,9 @@ func doDedup() {
 	_ = dedup.stats.Print(os.Stderr)
 }
 
-// Deduplicator performs deduplication of the specified file
-type Deduplicator struct {
-	writer    codec.SegmentWriter
-	segmenter Segmenter
-	stats     *ParseStats
-}
-
-// NewDeduplicator returns a Deduplicator
-func NewDeduplicator(winsz, mask uint64, output io.WriteCloser) *Deduplicator {
-	segmenter := Segmenter{
-		WindowSize: winsz,
-		Mask:       mask,
+// Performs reduplication (decompression)
+func doRedup(in io.ReadCloser, out io.WriteCloser) {
+	if err := codec.NewGobReader(in, out).Reduplicate(); err != nil {
+		log.Fatalln("Failed to redup", err)
 	}
-
-	d := Deduplicator{
-		writer:    codec.NewGobWriter(output),
-		segmenter: segmenter,
-		stats:     NewParseStats(sha512.New()),
-	}
-
-	d.segmenter.SegHandler = &d
-	return &d
-}
-
-// Do runs the deduplication
-func (d *Deduplicator) Do(f *os.File) error {
-	err := d.segmenter.SegmentFile(f)
-	return err
-}
-
-func (d *Deduplicator) Handle(seg []byte) error {
-	segHash := d.stats.UpdateStats(seg)
-	segStat := d.stats.SegHashes[segHash]
-	return d.writer.Write(seg, segStat.SeqNum, segStat.Freq > 1)
 }
