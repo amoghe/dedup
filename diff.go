@@ -10,13 +10,14 @@ import (
 type SigMaker struct {
 	segmenter Segmenter
 	stats     *ParseStats
-	writer    codec.GobWriter
+	writer    codec.SignatureWriter
 }
 
 func NewSigMaker(winsz, mask uint64, output io.WriteCloser) *SigMaker {
 	sm := SigMaker{
 		stats:     NewParseStats(sha512.New()),
 		segmenter: Segmenter{WindowSize: *windowSize, Mask: mask},
+		writer:    codec.NewGobWriter(output),
 	}
 	sm.segmenter.SegHandler = &sm
 	return &sm
