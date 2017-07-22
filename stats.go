@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"strconv"
+	"strings"
 	"sync/atomic"
 
 	"github.com/montanaflynn/stats"
@@ -129,4 +131,18 @@ func (s ParseStats) Print(out io.Writer) error {
 	}
 	fmt.Fprintln(out, string(marshalled))
 	return nil
+}
+
+// PrintSegLengths prints segment lengths to the specified output separated by
+// the specified separator
+func (s ParseStats) PrintSegLengths(out io.Writer, sep string) error {
+	lenStrings := []string{}
+	for _, len := range s.SegLengths {
+		lenStrings = append(lenStrings, strconv.Itoa(int(len)))
+	}
+
+	// Join our string slice.
+	result := strings.Join(lenStrings, sep)
+	_, err := fmt.Fprint(out, result)
+	return err
 }
