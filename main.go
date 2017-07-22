@@ -30,18 +30,15 @@ var (
 			Bool()
 	memProfile = kingpin.Flag("memprofile", "Enable memory profiling").
 			Bool()
-	toStdout = kingpin.Flag("stdout", "Write to stdout").
-			Short('c').
-			Bool()
+	// toStdout = kingpin.Flag("stdout", "Write to stdout").
+	// 		Short('c').
+	// 		Bool()
 	// TODO: Add positional arg, then deal appropriately with toStdout
 	// inputFile = kingpin.Arg("infile", "File to be deduplicated").
 	// 		File()
 	makeSig = kingpin.Flag("signature", "Make a signature file").
 		Short('s').
 		Bool()
-
-	inFile  io.ReadCloser
-	outFile io.WriteCloser
 )
 
 func main() {
@@ -52,9 +49,9 @@ func main() {
 	if *makeSig {
 		doSignatures(os.Stdin, os.Stdout)
 	} else if *reduplicate {
-		doRedup(os.Stdin, outFile)
+		doRedup(os.Stdin, os.Stdout)
 	} else {
-		doDedup(os.Stdin, outFile)
+		doDedup(os.Stdin, os.Stdout)
 	}
 }
 
@@ -79,6 +76,7 @@ func doDedup(in io.ReadCloser, out io.WriteCloser) {
 	}
 	// Print stats (TODO: make this optional)
 	_ = dedup.stats.Print(os.Stderr)
+	//dedup.stats.PrintSegLengths(os.Stderr)
 }
 
 // Performs reduplication (decompression)
