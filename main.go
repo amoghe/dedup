@@ -33,12 +33,15 @@ var (
 	// toStdout = kingpin.Flag("stdout", "Write to stdout").
 	// 		Short('c').
 	// 		Bool()
-	// TODO: Add positional arg, then deal appropriately with toStdout
-	// inputFile = kingpin.Arg("infile", "File to be deduplicated").
-	// 		File()
+	//TODO: Add positional arg, then deal appropriately with toStdout
+	inputFile = kingpin.Arg("infile", "File to be deduplicated").
+			File()
 	makeSig = kingpin.Flag("signature", "Make a signature file").
 		Short('s').
 		Bool()
+
+	inFile  io.ReadCloser  = os.Stdin
+	outFile io.WriteCloser = os.Stdout
 )
 
 func main() {
@@ -51,7 +54,7 @@ func main() {
 	} else if *reduplicate {
 		doRedup(os.Stdin, os.Stdout)
 	} else {
-		doDedup(os.Stdin, os.Stdout)
+		doDedup(inFile, outFile)
 	}
 }
 
@@ -65,6 +68,10 @@ func parseArgsOrDie() {
 
 	if *zeroBits <= 1 {
 		log.Fatalln("Mask size too small (<=1)")
+	}
+
+	if *inputFile != nil {
+		inFile = *inputFile
 	}
 }
 
