@@ -30,18 +30,17 @@ var (
 			Bool()
 	memProfile = kingpin.Flag("memprofile", "Enable memory profiling").
 			Bool()
-	// toStdout = kingpin.Flag("stdout", "Write to stdout").
-	// 		Short('c').
-	// 		Bool()
-	//TODO: Add positional arg, then deal appropriately with toStdout
+	toStdout = kingpin.Flag("stdout", "Write to stdout").
+			Short('c').
+			Bool()
 	inputFile = kingpin.Arg("infile", "File to be deduplicated").
 			File()
 	makeSig = kingpin.Flag("signature", "Make a signature file").
 		Short('s').
 		Bool()
 
-	inFile  io.ReadCloser  = os.Stdin
-	outFile io.WriteCloser = os.Stdout
+	source io.ReadCloser  = os.Stdin
+	sink   io.WriteCloser = os.Stdout
 )
 
 func main() {
@@ -54,7 +53,7 @@ func main() {
 	} else if *reduplicate {
 		doRedup(os.Stdin, os.Stdout)
 	} else {
-		doDedup(inFile, outFile)
+		doDedup(source, sink)
 	}
 }
 
@@ -70,8 +69,27 @@ func parseArgsOrDie() {
 		log.Fatalln("Mask size too small (<=1)")
 	}
 
+	// change what source points to (if specified)
 	if *inputFile != nil {
-		inFile = *inputFile
+		source = *inputFile
+	}
+
+	// change what sink points to
+	if *inputFile != nil && *toStdout == false {
+		inFileName := (*inputFile).Name()
+		outFileName := inFileName + ".dd"
+		// TODO: if decompression, strip the 'dd'
+
+		inStat, err := (*inputFile).Stat()
+		if err != nil {
+			log.Fatalln("Failed to stat input file:", err)
+		}
+
+		out, err := os.OpenFile(outFileName, os.O_CREATE|os.O_RDWR, inStat.Mode())
+		if err != nil {
+			log.Fatalln("Failed to open output file:", err)
+		}
+		sink = out
 	}
 }
 
