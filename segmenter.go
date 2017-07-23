@@ -15,9 +15,10 @@ type SegmentHandler interface {
 
 // Segmenter segments a file or stream
 type Segmenter struct {
-	WindowSize uint64
-	Mask       uint64
-	SegHandler SegmentHandler
+	WindowSize       uint64
+	Mask             uint64
+	MaxSegmentLength uint64
+	SegHandler       SegmentHandler
 }
 
 // SegmentFile does the actual work of segmenting the specified file as per the
@@ -36,12 +37,15 @@ func (s Segmenter) SegmentFile(file io.ReadCloser) error {
 		return errors.Errorf("Invalid windows size specified")
 	}
 
+	if s.MaxSegmentLength <= 0 {
+		s.MaxSegmentLength = (s.Mask + 1) * 8 // arbitrary :-)
+	}
+
 	var (
-		reader           = bufio.NewReader(file)
-		roller           = buzhash.NewBuzHash(uint32(s.WindowSize))
-		maxSegmentLength = int(2048)
-		curSegment       = make([]byte, 0, maxSegmentLength)
-		bytesRead        = uint64(0) // uint64(f.WindowSize)
+		reader     = bufio.NewReader(file)
+		roller     = buzhash.NewBuzHash(uint32(s.WindowSize))
+		curSegment = make([]byte, 0, s.MaxSegmentLength)
+		bytesRead  = uint64(0) // uint64(f.WindowSize)
 	)
 
 	// Loop over input stream one byte at a time
@@ -64,7 +68,13 @@ func (s Segmenter) SegmentFile(file io.ReadCloser) error {
 		}
 
 		// If this is a cutpoint, process the curSegment
-		if (len(curSegment) >= maxSegmentLength) || ((uint64(sum) & s.Mask) == 0) {
+		if (uint64(sum) & s.Mask) == 0 {
+			if err := s.SegHandler.Handle(curSegment); err != nil {
+				return err
+			}
+			curSegment = curSegment[:0] // reset the curSegment accumulator
+		}
+		if uint64(len(curSegment)) >= s.MaxSegmentLength {
 			if err := s.SegHandler.Handle(curSegment); err != nil {
 				return err
 			}
