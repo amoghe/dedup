@@ -45,7 +45,8 @@ func (s Segmenter) SegmentFile(file io.ReadCloser) error {
 		reader     = bufio.NewReader(file)
 		roller     = buzhash.NewBuzHash(uint32(s.WindowSize))
 		curSegment = make([]byte, 0, s.MaxSegmentLength)
-		bytesRead  = uint64(0) // uint64(f.WindowSize)
+		bytesRead  = uint64(0)
+		minSegLen  = s.WindowSize
 	)
 
 	// Loop over input stream one byte at a time
@@ -62,8 +63,8 @@ func (s Segmenter) SegmentFile(file io.ReadCloser) error {
 		sum := roller.HashByte(b)
 		bytesRead++
 
-		// Process at least WindowSize bytes since last cutpoint
-		if uint64(len(curSegment)) <= s.WindowSize {
+		// dont accept segments smaller than minSegLen
+		if uint64(len(curSegment)) <= minSegLen {
 			continue
 		}
 
