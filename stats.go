@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"sort"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -136,6 +137,7 @@ func (s ParseStats) Print(out io.Writer) error {
 // PrintSegLengths prints segment lengths to the specified output separated by
 // the specified separator
 func (s ParseStats) PrintSegLengths(out io.Writer, sep string) error {
+
 	lenStrings := []string{}
 	for _, len := range s.SegLengths {
 		lenStrings = append(lenStrings, strconv.Itoa(int(len)))
@@ -146,3 +148,30 @@ func (s ParseStats) PrintSegLengths(out io.Writer, sep string) error {
 	_, err := fmt.Fprint(out, result)
 	return err
 }
+
+// PrintMostFrequentSegStats prints 'n' "hottest" segments (SegmentStat)
+func (s ParseStats) PrintMostFrequentSegStats(out io.Writer, n int) error {
+	ss := []SegmentStat{}
+	for _, s := range s.SegHashes {
+		ss = append(ss, s)
+	}
+
+	sort.Sort(sort.Reverse(bySegFreq(ss)))
+
+	for i := 0; i < n; i++ {
+		marshalled, err := json.MarshalIndent(ss[i], "", "  ")
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(out, string(marshalled))
+	}
+
+	return nil
+}
+
+// SegmentStat sorted by segment frequencies
+type bySegFreq []SegmentStat
+
+func (a bySegFreq) Len() int           { return len(a) }
+func (a bySegFreq) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a bySegFreq) Less(i, j int) bool { return a[i].Freq < a[j].Freq }

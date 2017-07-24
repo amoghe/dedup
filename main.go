@@ -100,8 +100,8 @@ func doDedup(in io.ReadCloser, out io.WriteCloser) {
 		log.Fatalln("Failed to parse file:", err)
 	}
 	// Print stats (TODO: make this optional)
-	_ = dedup.stats.Print(os.Stderr)
-	//dedup.stats.PrintSegLengths(os.Stderr)
+	dedup.stats.Print(os.Stderr)
+	dedup.stats.PrintMostFrequentSegStats(os.Stderr, 10)
 }
 
 // Performs reduplication (decompression)
