@@ -24,8 +24,8 @@ func NewSigMaker(winsz, mask uint64, output io.WriteCloser) *SigMaker {
 }
 
 // Do generates the signatures
-func (d *SigMaker) Do(f io.ReadCloser) error {
-	err := d.segmenter.SegmentFile(f)
+func (s *SigMaker) Do(f io.ReadCloser) error {
+	err := s.segmenter.SegmentFile(f)
 	return err
 }
 
