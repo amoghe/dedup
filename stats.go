@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/codahale/hdrhistogram"
 	"github.com/montanaflynn/stats"
 	"github.com/pkg/errors"
 )
@@ -93,6 +94,7 @@ func (s ParseStats) Print(out io.Writer) error {
 		return errors.Wrapf(err, "Failed to compute mean")
 	}
 
+	mostFreq := 0
 	dupCount := 0
 	dupBytes := 0
 	lenUnique := uint64(0)
@@ -100,6 +102,9 @@ func (s ParseStats) Print(out io.Writer) error {
 		if segStat.Freq > 1 {
 			dupCount += (segStat.Freq - 1)
 			dupBytes += (segStat.Length * (segStat.Freq - 1))
+		}
+		if segStat.Freq > mostFreq {
+			mostFreq = segStat.Freq
 		}
 		lenUnique += uint64(segStat.Length)
 	}
@@ -112,6 +117,7 @@ func (s ParseStats) Print(out io.Writer) error {
 		MinSegLength    float64
 		DupSegCount     int
 		DupBytes        int
+		MaxSegFreq      int
 		UniqueBytes     uint64
 		TotalBytes      uint64
 	}{
@@ -122,6 +128,7 @@ func (s ParseStats) Print(out io.Writer) error {
 		MinSegLength:    min,
 		DupSegCount:     dupCount,
 		DupBytes:        dupBytes,
+		MaxSegFreq:      mostFreq,
 		UniqueBytes:     lenUnique,
 		TotalBytes:      s.BytesParsed,
 	}
@@ -166,6 +173,24 @@ func (s ParseStats) PrintMostFrequentSegStats(out io.Writer, n int) error {
 		fmt.Fprintln(out, string(marshalled))
 	}
 
+	return nil
+}
+
+// PrintSegLengthHistogram prints histogram (bars in csv) to out
+func (s ParseStats) PrintSegLengthHistogram(out io.Writer) error {
+	ss := []SegmentStat{}
+	for _, s := range s.SegHashes {
+		ss = append(ss, s)
+	}
+	sort.Sort(sort.Reverse(bySegFreq(ss)))
+
+	hist := hdrhistogram.New(int64(ss[0].Length), int64(ss[len(ss)-1].Length), 1)
+	for _, s := range ss {
+		hist.RecordValue(int64(s.Length))
+	}
+	for _, bar := range hist.Distribution() {
+		fmt.Fprintf(out, "%s\n", bar.String())
+	}
 	return nil
 }
 
