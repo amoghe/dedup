@@ -50,3 +50,24 @@ func (d *Deduplicator) Handle(seg []byte) error {
 	}
 	return d.writer.Write(seg, segNum, !segNew)
 }
+
+// MessagesForSegment returns one or more messages we emit (to the wire) for the
+// segment specified (presumably just encountered)
+func MessagesForSegment(seg []byte, segNum uint64, new bool) []WireMessage {
+	ret := []WireMessage{}
+
+	if new {
+		ret = append(ret, WireMessage{
+			Type:     WireMessageDef,
+			DefID:    segNum,
+			DefBytes: seg,
+		})
+	}
+
+	ret = append(ret, WireMessage{
+		Type:  WireMessageRef,
+		RefID: segNum,
+	})
+
+	return ret
+}
