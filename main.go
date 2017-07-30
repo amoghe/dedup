@@ -35,22 +35,18 @@ var (
 			Bool()
 	inputFile = kingpin.Arg("infile", "File to be deduplicated").
 			File()
-	makeSig = kingpin.Flag("signature", "Make a signature file").
-		Short('s').
-		Bool()
 
 	source io.ReadCloser  = os.Stdin
 	sink   io.WriteCloser = os.Stdout
 )
 
+// main entrypoint
 func main() {
 	parseArgsOrDie()
 	if *memProfile {
 		defer profile.Start(profile.MemProfile).Stop()
 	}
-	if *makeSig {
-		doSignatures(os.Stdin, os.Stdout)
-	} else if *reduplicate {
+	if *reduplicate {
 		doRedup(os.Stdin, os.Stdout)
 	} else {
 		doDedup(source, sink)
@@ -101,20 +97,11 @@ func doDedup(in io.ReadCloser, out io.WriteCloser) {
 	}
 	// Print stats (TODO: make this optional)
 	dedup.stats.Print(os.Stderr)
-	dedup.stats.PrintMostFrequentSegStats(os.Stderr, 10)
 }
 
 // Performs reduplication (decompression)
 func doRedup(in io.ReadCloser, out io.WriteCloser) {
 	if err := codec.NewGobReader(in, out).Reduplicate(); err != nil {
 		log.Fatalln("Failed to redup", err)
-	}
-}
-
-// Makes a signature file
-func doSignatures(in io.ReadCloser, out io.WriteCloser) {
-	sm := NewSigMaker(*windowSize, uint64((1<<*zeroBits)-1), out)
-	if err := sm.Do(in); err != nil {
-		log.Fatalln("Failed to generate signatures:", err)
 	}
 }

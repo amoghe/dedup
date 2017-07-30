@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/sha512"
+	"hash"
 	"io"
 
 	"github.com/amoghe/dedup/codec"
@@ -11,6 +12,7 @@ import (
 type Deduplicator struct {
 	writer    codec.SegmentWriter
 	segmenter Segmenter
+	seghasher hash.Hash
 	stats     *ParseStats
 }
 
@@ -19,9 +21,9 @@ func NewDeduplicator(winsz, mask uint64, output io.WriteCloser) *Deduplicator {
 	d := Deduplicator{
 		writer:    codec.NewGobWriter(output),
 		segmenter: Segmenter{WindowSize: winsz, Mask: mask},
-		stats:     NewParseStats(sha512.New()),
+		seghasher: sha512.New(),
+		stats:     NewParseStats(),
 	}
-
 	d.segmenter.SegHandler = &d
 	return &d
 }
@@ -34,7 +36,7 @@ func (d *Deduplicator) Do(f io.ReadCloser) error {
 
 // Handle allows the Deduplicator to be a SegmentHandler (satisfies interface)
 func (d *Deduplicator) Handle(seg []byte) error {
-	segHash := d.stats.UpdateStats(seg)
+	segHash := d.stats.UpdateStats(seg, d.seghasher.Sum(seg))
 	segStat := d.stats.SegHashes[segHash]
 	return d.writer.Write(seg, segStat.SeqNum, segStat.Freq > 1)
 }
