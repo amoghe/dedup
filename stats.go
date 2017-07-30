@@ -21,13 +21,8 @@ type SegmentStat struct {
 
 // ParseStats holds stats about the parsed file
 type ParseStats struct {
-	Cutpoints   []uint64               // indices at which we have cutpoints
-	SegLengths  []uint64               // lengths of segments (between cutpoints)
 	SegHashes   map[string]SegmentStat // map[crypto hash of seg] -> SegmentStat
 	BytesParsed uint64                 // number of bytes parsed
-
-	// internal:
-	segNum uint64 // tracks the segment numbers we've issued
 }
 
 // NewParseStats returns an initialized ParseStats struct
@@ -52,21 +47,19 @@ func (s *ParseStats) UpdateStats(segment, seghash []byte) {
 		segStat.Length = len(segment)
 	}
 	s.SegHashes[segHash] = segStat
-
-	// Additional book keeping (TODO: allow this to be disabled)
-	s.Cutpoints = append(s.Cutpoints, s.BytesParsed+uint64(len(segment)))
-	s.SegLengths = append(s.SegLengths, uint64(len(segment)))
 	s.BytesParsed += uint64(len(segment))
-
 	return
 }
 
 // Print prints the specified ParseStats on the given output (io.Writer)
 //
 func (s ParseStats) Print(out io.Writer) error {
-	segLens := make([]float64, 0, len(s.SegLengths))
-	for _, s := range s.SegLengths {
-		segLens = append(segLens, float64(s))
+
+	segLens := make([]float64, 0, len(s.SegHashes))
+	for _, stat := range s.SegHashes {
+		for i := 0; i < stat.Freq; i++ {
+			segLens = append(segLens, float64(stat.Length))
+		}
 	}
 
 	med, err := stats.Median(segLens)
@@ -102,7 +95,7 @@ func (s ParseStats) Print(out io.Writer) error {
 	}
 
 	output := struct {
-		NumCutpoints    int
+		NumSegments     int
 		MeanSegLength   float64
 		MedianSegLength float64
 		MaxSegLength    float64
@@ -113,7 +106,7 @@ func (s ParseStats) Print(out io.Writer) error {
 		UniqueBytes     uint64
 		TotalBytes      uint64
 	}{
-		NumCutpoints:    len(s.Cutpoints),
+		NumSegments:     len(segLens),
 		MeanSegLength:   mea,
 		MedianSegLength: med,
 		MaxSegLength:    max,
@@ -138,8 +131,10 @@ func (s ParseStats) Print(out io.Writer) error {
 func (s ParseStats) PrintSegLengths(out io.Writer, sep string) error {
 
 	lenStrings := []string{}
-	for _, len := range s.SegLengths {
-		lenStrings = append(lenStrings, strconv.Itoa(int(len)))
+	for _, stat := range s.SegHashes {
+		for i := 0; i < stat.Freq; i++ {
+			lenStrings = append(lenStrings, strconv.Itoa(int(stat.Length)))
+		}
 	}
 
 	// Join our string slice.
