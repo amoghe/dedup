@@ -3,12 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"hash"
 	"io"
 	"sort"
 	"strconv"
 	"strings"
-	"sync/atomic"
 
 	"github.com/codahale/hdrhistogram"
 	"github.com/montanaflynn/stats"
@@ -17,9 +15,8 @@ import (
 
 // SegmentStat holds stats for a single segment
 type SegmentStat struct {
-	SeqNum uint64 // First occurrence of this segment in the file
-	Length int    // Length of segment
-	Freq   int    // How many times this segment occurred in the file
+	Length int // Length of segment
+	Freq   int // How many times this segment occurred in the file
 }
 
 // ParseStats holds stats about the parsed file
@@ -30,34 +27,29 @@ type ParseStats struct {
 	BytesParsed uint64                 // number of bytes parsed
 
 	// internal:
-	segNum    uint64    // tracks the segment numbers we've issued
-	segHasher hash.Hash // used to generate the crypto hash of segments
+	segNum uint64 // tracks the segment numbers we've issued
 }
 
 // NewParseStats returns an initialized ParseStats struct
-func NewParseStats(hasher hash.Hash) *ParseStats {
+func NewParseStats() *ParseStats {
 	return &ParseStats{
 		SegHashes: make(map[string]SegmentStat),
-		segNum:    uint64(0),
-		segHasher: hasher,
 	}
 }
 
 // UpdateStats updates the ParseStats with stats for the specified chunk
-func (s *ParseStats) UpdateStats(segment []byte) string {
+func (s *ParseStats) UpdateStats(segment, seghash []byte) {
 
 	// Sprint'ing the hash sum causes an allocation that is unnecessary and
 	// is completely avoidable.
 	//segHash := fmt.Sprintf("%X", s.segHasher.Sum(segment))
-	segHash := string(s.segHasher.Sum(segment))
+	segHash := string(seghash)
 	segStat, there := s.SegHashes[segHash]
 	if there {
 		segStat.Freq++
 	} else {
-		//segStat = SegmentStat{SeqNum: s.segNum, Length: len(segment), Freq: 1}
 		segStat.Freq = 1
 		segStat.Length = len(segment)
-		segStat.SeqNum = atomic.AddUint64(&s.segNum, 1)
 	}
 	s.SegHashes[segHash] = segStat
 
@@ -66,7 +58,7 @@ func (s *ParseStats) UpdateStats(segment []byte) string {
 	s.SegLengths = append(s.SegLengths, uint64(len(segment)))
 	s.BytesParsed += uint64(len(segment))
 
-	return segHash
+	return
 }
 
 // Print prints the specified ParseStats on the given output (io.Writer)
