@@ -9,10 +9,11 @@ import (
 
 // GobReader allows us to read gob encoded streams
 type GobReader struct {
-	output   io.WriteCloser
-	rawInput io.ReadCloser
-	gobInput *gob.Decoder
-	segMap   map[uint64][]byte
+	output        io.WriteCloser
+	rawInput      io.ReadCloser
+	gobInput      *gob.Decoder
+	segMap        map[uint64][]byte
+	msgsProcessed uint64
 }
 
 func NewGobReader(input io.ReadCloser, output io.WriteCloser) *GobReader {
@@ -43,6 +44,7 @@ func (r *GobReader) Reduplicate() error {
 		default:
 			return errors.Errorf("Unexpected type in input stream: %d", dec.Type)
 		}
+		r.msgsProcessed++
 	}
 	return nil
 }
