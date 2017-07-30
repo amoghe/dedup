@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 
 	"github.com/codahale/hdrhistogram"
 	"github.com/montanaflynn/stats"
@@ -15,25 +16,28 @@ import (
 
 // SegmentStat holds stats for a single segment
 type SegmentStat struct {
+	ID     uint64
 	Length int // Length of segment
 	Freq   int // How many times this segment occurred in the file
 }
 
-// ParseStats holds stats about the parsed file
-type ParseStats struct {
+// SegmentTracker tracks segments
+type SegmentTracker struct {
 	SegHashes   map[string]SegmentStat // map[crypto hash of seg] -> SegmentStat
 	BytesParsed uint64                 // number of bytes parsed
+	// internal - tracks IDs we've issued to segments
+	segmentNum uint64
 }
 
-// NewParseStats returns an initialized ParseStats struct
-func NewParseStats() *ParseStats {
-	return &ParseStats{
+// NewSegmentTracker returns an initialized SegmentTracker struct
+func NewSegmentTracker() *SegmentTracker {
+	return &SegmentTracker{
 		SegHashes: make(map[string]SegmentStat),
 	}
 }
 
-// UpdateStats updates the ParseStats with stats for the specified chunk
-func (s *ParseStats) UpdateStats(segment, seghash []byte) {
+// Track records the stats for the specified segment
+func (s *SegmentTracker) Track(segment, seghash []byte) SegmentStat {
 
 	// Sprint'ing the hash sum causes an allocation that is unnecessary and
 	// is completely avoidable.
@@ -45,15 +49,15 @@ func (s *ParseStats) UpdateStats(segment, seghash []byte) {
 	} else {
 		segStat.Freq = 1
 		segStat.Length = len(segment)
+		segStat.ID = atomic.AddUint64(&s.segmentNum, 1)
 	}
 	s.SegHashes[segHash] = segStat
 	s.BytesParsed += uint64(len(segment))
-	return
+	return segStat
 }
 
-// Print prints the specified ParseStats on the given output (io.Writer)
-//
-func (s ParseStats) Print(out io.Writer) error {
+// PrintStats prints the segment stats on the given output (io.Writer)
+func (s SegmentTracker) PrintStats(out io.Writer) error {
 
 	segLens := make([]float64, 0, len(s.SegHashes))
 	for _, stat := range s.SegHashes {
@@ -128,7 +132,7 @@ func (s ParseStats) Print(out io.Writer) error {
 
 // PrintSegLengths prints segment lengths to the specified output separated by
 // the specified separator
-func (s ParseStats) PrintSegLengths(out io.Writer, sep string) error {
+func (s SegmentTracker) PrintSegLengths(out io.Writer, sep string) error {
 
 	lenStrings := []string{}
 	for _, stat := range s.SegHashes {
@@ -144,7 +148,7 @@ func (s ParseStats) PrintSegLengths(out io.Writer, sep string) error {
 }
 
 // PrintMostFrequentSegStats prints 'n' "hottest" segments (SegmentStat)
-func (s ParseStats) PrintMostFrequentSegStats(out io.Writer, n int) error {
+func (s SegmentTracker) PrintMostFrequentSegStats(out io.Writer, n int) error {
 	ss := []SegmentStat{}
 	for _, s := range s.SegHashes {
 		ss = append(ss, s)
@@ -164,7 +168,7 @@ func (s ParseStats) PrintMostFrequentSegStats(out io.Writer, n int) error {
 }
 
 // PrintSegLengthHistogram prints histogram (bars in csv) to out
-func (s ParseStats) PrintSegLengthHistogram(out io.Writer) error {
+func (s SegmentTracker) PrintSegLengthHistogram(out io.Writer) error {
 	ss := []SegmentStat{}
 	for _, s := range s.SegHashes {
 		ss = append(ss, s)
