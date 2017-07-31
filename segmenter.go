@@ -64,7 +64,7 @@ func (s Segmenter) SegmentFile(file io.ReadCloser) error {
 		bytesRead++
 
 		// dont accept segments smaller than minSegLen
-		if uint64(len(curSegment)) <= minSegLen {
+		if uint64(len(curSegment)) < minSegLen {
 			continue
 		}
 
