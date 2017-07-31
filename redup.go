@@ -37,7 +37,7 @@ func (r *Reduplicator) Do(output io.WriteCloser) error {
 
 		switch msg.Type {
 		case codec.MessageDef:
-			r.handleSegmentDef(&msg)
+			r.handleSegmentDef(&msg, output)
 		case codec.MessageRef:
 			r.handleSegmentRef(&msg, output)
 		default:
@@ -48,8 +48,10 @@ func (r *Reduplicator) Do(output io.WriteCloser) error {
 	return nil
 }
 
-func (r *Reduplicator) handleSegmentDef(msg *codec.Message) {
+func (r *Reduplicator) handleSegmentDef(msg *codec.Message, out io.Writer) {
 	r.tracker[msg.DefID] = msg.DefBytes
+	// receipt of def is implicit ref, so output the bytes
+	out.Write(msg.DefBytes)
 }
 
 func (r *Reduplicator) handleSegmentRef(msg *codec.Message, out io.Writer) {

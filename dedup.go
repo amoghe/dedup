@@ -37,25 +37,20 @@ func (d *Deduplicator) Do(input io.ReadCloser) error {
 // Handle allows the Deduplicator to be a SegmentHandler (satisfies interface)
 func (d *Deduplicator) Handle(seg []byte) error {
 	segStat := d.tracker.Track(seg, d.seghasher.Sum(seg))
-	outMsgs := []codec.Message{}
 
+	var msg codec.Message
 	if segStat.Freq <= 1 {
-		outMsgs = append(outMsgs, codec.Message{
+		msg = codec.Message{
 			Type:     codec.MessageDef,
 			DefID:    segStat.ID,
 			DefBytes: seg,
-		})
-	}
-
-	outMsgs = append(outMsgs, codec.Message{
-		Type:  codec.MessageRef,
-		RefID: segStat.ID,
-	})
-
-	for _, msg := range outMsgs {
-		if err := d.writer.Write(&msg); err != nil {
-			return err
+		}
+	} else {
+		msg = codec.Message{
+			Type:  codec.MessageRef,
+			RefID: segStat.ID,
 		}
 	}
-	return nil
+
+	return d.writer.Write(&msg)
 }
