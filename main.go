@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/amoghe/dedup/codec"
 	"github.com/pkg/profile"
 
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -101,7 +100,10 @@ func doDedup(in io.ReadCloser, out io.WriteCloser) {
 
 // Performs reduplication (decompression)
 func doRedup(in io.ReadCloser, out io.WriteCloser) {
-	if err := codec.NewGobReader(in, out).Reduplicate(); err != nil {
+	redup := NewReduplicator(in)
+	if err := redup.Do(out); err != nil {
 		log.Fatalln("Failed to redup", err)
 	}
+	// Print stats (TODO: make this optional)
+	// redup.PrintStats()
 }

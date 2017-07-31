@@ -14,49 +14,25 @@ type GobWriter struct {
 	encoder *gob.Encoder
 }
 
-// NewGobWriter returns a writer to write golang/gobs to the specified output
-func NewGobWriter(output io.WriteCloser) *GobWriter {
+// NewGobWriter returns a codec.writer capable of emitting golang/gob encoded
+// messages to the specified output
+func NewGobWriter(output io.WriteCloser) Writer {
 	return &GobWriter{
 		output:  output,
 		encoder: gob.NewEncoder(output),
 	}
 }
 
-// Write outputs the segment instruction (ref, def) to the output stream
-func (g *GobWriter) Write(seg []byte, id uint64, seen bool) error {
-
-	if !seen {
-		err := g.emit(&GobMessage{
-			Type:     GobMessageDef,
-			DefID:    id,
-			DefBytes: seg,
-		})
-		if err != nil {
-			return err
-		}
-	}
-
-	err := g.emit(&GobMessage{
-		Type:  GobMessageRef,
-		RefID: id,
-	})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Close allows GobWriter to satisfy SegmentWriter interface
-func (g *GobWriter) Close() {
-	// TODO: w.output.Flush()
-	g.output.Close()
-}
-
-// actually emit the message to the output stream
-func (g *GobWriter) emit(msg *GobMessage) error {
+// Write emits the message to the output stream
+func (g *GobWriter) Write(msg *Message) error {
 	if err := g.encoder.Encode(msg); err != nil {
 		return errors.Wrapf(err, "Failed to encode msg: %v", err)
 	}
 	return nil
+}
+
+// Close closes the output stream
+func (g *GobWriter) Close() {
+	// TODO: g.output.Flush()
+	g.output.Close()
 }

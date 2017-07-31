@@ -1,21 +1,26 @@
 package codec
 
-// SegmentWriter allows various implementations of 'writers' to write segments
-// to output streams
-type SegmentWriter interface {
-	Write(seg []byte, id uint64, seen bool) error
+// Writer interface allows callers to write the protocol messages to a sink
+type Writer interface {
+	Write(*Message) error
+	Close()
+}
+
+// Reader interface allows callers to read a stream of protocol messages
+type Reader interface {
+	Read() (Message, error)
 	Close()
 }
 
 const (
-	// GobMessageRef indicates this is a Ref message
-	GobMessageRef = 1
-	// GobMessageDef indicates this is a Def message
-	GobMessageDef = 2
+	// MessageRef indicates this is a Ref message
+	MessageRef = 1
+	// MessageDef indicates this is a Def message
+	MessageDef = 2
 )
 
-// GobMessage is the message that we write to the output stream.
-type GobMessage struct {
+// Message is the message that we write to the output stream
+type Message struct {
 	Type     uint16
 	RefID    uint64
 	DefID    uint64

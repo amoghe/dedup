@@ -12,7 +12,7 @@ import (
 type Deduplicator struct {
 	segmenter Segmenter
 	seghasher hash.Hash
-	writer    codec.SegmentWriter
+	writer    codec.Writer
 	tracker   *SegmentTracker
 }
 
@@ -28,35 +28,34 @@ func NewDeduplicator(winsz, mask uint64, output io.WriteCloser) *Deduplicator {
 	return &d
 }
 
-// Do runs the deduplication
-func (d *Deduplicator) Do(f io.ReadCloser) error {
-	err := d.segmenter.SegmentFile(f)
-	return err
+// Do runs the deduplication of the specified input stream
+func (d *Deduplicator) Do(input io.ReadCloser) error {
+	defer d.writer.Close()
+	return d.segmenter.SegmentFile(input)
 }
 
 // Handle allows the Deduplicator to be a SegmentHandler (satisfies interface)
 func (d *Deduplicator) Handle(seg []byte) error {
 	segStat := d.tracker.Track(seg, d.seghasher.Sum(seg))
-	return d.writer.Write(seg, segStat.ID, segStat.Freq > 1)
-}
+	outMsgs := []codec.Message{}
 
-// MessagesForSegment returns one or more messages we emit (to the wire) for the
-// segment specified (presumably just encountered)
-func MessagesForSegment(seg []byte, segNum uint64, new bool) []WireMessage {
-	ret := []WireMessage{}
-
-	if new {
-		ret = append(ret, WireMessage{
-			Type:     WireMessageDef,
-			DefID:    segNum,
+	if segStat.Freq <= 1 {
+		outMsgs = append(outMsgs, codec.Message{
+			Type:     codec.MessageDef,
+			DefID:    segStat.ID,
 			DefBytes: seg,
 		})
 	}
 
-	ret = append(ret, WireMessage{
-		Type:  WireMessageRef,
-		RefID: segNum,
+	outMsgs = append(outMsgs, codec.Message{
+		Type:  codec.MessageRef,
+		RefID: segStat.ID,
 	})
 
-	return ret
+	for _, msg := range outMsgs {
+		if err := d.writer.Write(&msg); err != nil {
+			return err
+		}
+	}
+	return nil
 }
