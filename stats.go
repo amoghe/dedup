@@ -59,11 +59,24 @@ func (s *SegmentTracker) Track(segment, seghash []byte) SegmentStat {
 // PrintStats prints the segment stats on the given output (io.Writer)
 func (s SegmentTracker) PrintStats(out io.Writer) error {
 
+	mostFreq := 0
+	dupCount := 0
+	dupBytes := 0
+	lenUnique := uint64(0)
 	segLens := make([]float64, 0, len(s.SegHashes))
+
 	for _, stat := range s.SegHashes {
 		for i := 0; i < stat.Freq; i++ {
 			segLens = append(segLens, float64(stat.Length))
 		}
+		if stat.Freq > 1 {
+			dupCount += (stat.Freq - 1)
+			dupBytes += (stat.Length * (stat.Freq - 1))
+		}
+		if stat.Freq > mostFreq {
+			mostFreq = stat.Freq
+		}
+		lenUnique += uint64(stat.Length)
 	}
 
 	med, err := stats.Median(segLens)
@@ -81,21 +94,6 @@ func (s SegmentTracker) PrintStats(out io.Writer) error {
 	mea, err := stats.Mean(segLens)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to compute mean")
-	}
-
-	mostFreq := 0
-	dupCount := 0
-	dupBytes := 0
-	lenUnique := uint64(0)
-	for _, segStat := range s.SegHashes {
-		if segStat.Freq > 1 {
-			dupCount += (segStat.Freq - 1)
-			dupBytes += (segStat.Length * (segStat.Freq - 1))
-		}
-		if segStat.Freq > mostFreq {
-			mostFreq = segStat.Freq
-		}
-		lenUnique += uint64(segStat.Length)
 	}
 
 	output := struct {
