@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"sort"
 	"strconv"
 	"strings"
@@ -16,15 +17,14 @@ import (
 
 // SegmentStat holds stats for a single segment
 type SegmentStat struct {
-	ID     uint64
-	Length int // Length of segment
-	Freq   int // How many times this segment occurred in the file
+	ID     uint64 // ID is a (unique) numeric identifier for this segment
+	Length int    // Length of segment
+	Freq   int    // How many times this segment occurred in the file
 }
 
 // SegmentTracker tracks segments
 type SegmentTracker struct {
-	SegHashes   map[string]SegmentStat // map[crypto hash of seg] -> SegmentStat
-	BytesParsed uint64                 // number of bytes parsed
+	SegHashes map[string]SegmentStat // map[crypto hash of seg] -> SegmentStat
 	// internal - tracks IDs we've issued to segments
 	segmentNum uint64
 }
@@ -52,20 +52,24 @@ func (s *SegmentTracker) Track(segment, seghash []byte) SegmentStat {
 		segStat.ID = atomic.AddUint64(&s.segmentNum, 1)
 	}
 	s.SegHashes[segHash] = segStat
-	s.BytesParsed += uint64(len(segment))
 	return segStat
 }
 
 // PrintStats prints the segment stats on the given output (io.Writer)
 func (s SegmentTracker) PrintStats(out io.Writer) error {
 
-	mostFreq := 0
-	dupCount := 0
-	dupBytes := 0
-	lenUnique := uint64(0)
-	segLens := make([]float64, 0, len(s.SegHashes))
-
+	var (
+		mostFreq  = 0
+		dupCount  = 0
+		dupBytes  = 0
+		lenUnique = uint64(0)
+		lenTotal  = uint64(0)
+		segLens   = make([]float64, 0, len(s.SegHashes))
+	)
 	for _, stat := range s.SegHashes {
+		if stat.Freq <= 0 {
+			log.Panicln("Found SegmentStat with Freq = 0")
+		}
 		for i := 0; i < stat.Freq; i++ {
 			segLens = append(segLens, float64(stat.Length))
 		}
@@ -77,6 +81,7 @@ func (s SegmentTracker) PrintStats(out io.Writer) error {
 			mostFreq = stat.Freq
 		}
 		lenUnique += uint64(stat.Length)
+		lenTotal += uint64(stat.Length) * uint64(stat.Freq)
 	}
 
 	med, err := stats.Median(segLens)
@@ -117,7 +122,7 @@ func (s SegmentTracker) PrintStats(out io.Writer) error {
 		DupBytes:        dupBytes,
 		MaxSegFreq:      mostFreq,
 		UniqueBytes:     lenUnique,
-		TotalBytes:      s.BytesParsed,
+		TotalBytes:      lenTotal,
 	}
 
 	marshalled, err := json.MarshalIndent(output, "", "  ")
