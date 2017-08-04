@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/amoghe/dedup"
 	"github.com/pkg/profile"
 
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -90,17 +91,17 @@ func parseArgsOrDie() {
 
 // Performs deduplication (compression)
 func doDedup(in io.ReadCloser, out io.WriteCloser) {
-	dedup := NewDeduplicator(*windowSize, uint64((1<<*zeroBits)-1), out)
+	dedup := dedup.NewDeduplicator(*windowSize, uint64((1<<*zeroBits)-1), out)
 	if err := dedup.Do(in); err != nil {
 		log.Fatalln("Failed to parse file:", err)
 	}
 	// Print stats (TODO: make this optional)
-	dedup.tracker.PrintStats(os.Stderr)
+	dedup.PrintStats(os.Stderr)
 }
 
 // Performs reduplication (decompression)
 func doRedup(in io.ReadCloser, out io.WriteCloser) {
-	redup := NewReduplicator(in)
+	redup := dedup.NewReduplicator(in)
 	if err := redup.Do(out); err != nil {
 		log.Fatalln("Failed to redup", err)
 	}
