@@ -1,4 +1,4 @@
-package main
+package dedup
 
 import (
 	"bufio"

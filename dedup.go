@@ -1,4 +1,4 @@
-package main
+package dedup
 
 import (
 	"crypto/sha512"
@@ -53,4 +53,9 @@ func (d *Deduplicator) Handle(seg []byte) error {
 	}
 
 	return d.writer.Write(&msg)
+}
+
+// PrintStats prints stats to the given writer
+func (d *Deduplicator) PrintStats(out io.Writer) error {
+	return d.tracker.PrintStats(out)
 }

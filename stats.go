@@ -1,4 +1,4 @@
-package main
+package dedup
 
 import (
 	"encoding/json"
@@ -39,8 +39,7 @@ func NewSegmentTracker() *SegmentTracker {
 // Track records the stats for the specified segment
 func (s *SegmentTracker) Track(segment, seghash []byte) SegmentStat {
 
-	// Sprint'ing the hash sum causes an allocation that is unnecessary and
-	// is completely avoidable.
+	// Sprint'ing the hash sum causes an unnecessary/avoidable allocation
 	//segHash := fmt.Sprintf("%X", s.segHasher.Sum(segment))
 	segHash := string(seghash)
 	segStat, there := s.SegHashes[segHash]
