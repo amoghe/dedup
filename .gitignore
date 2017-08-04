@@ -1,5 +1,7 @@
-# Ignore the binary
-dedup
-
 # Ignore WIP
 codec/*bak
+
+# Ignore bins
+cmd/dedup/dedup
+cmd/ddpatch/ddpatch
+cmd/ddapply/ddapply
