@@ -42,19 +42,7 @@ var (
 
 // main entrypoint
 func main() {
-	parseArgsOrDie()
-	if *memProfile {
-		defer profile.Start(profile.MemProfile).Stop()
-	}
-	if *reduplicate {
-		doRedup(os.Stdin, os.Stdout)
-	} else {
-		doDedup(source, sink)
-	}
-}
 
-// Parse and validate command line arguments, fail on bad args
-func parseArgsOrDie() {
 	kingpin.Parse()
 
 	if *windowSize <= 1 {
@@ -65,13 +53,32 @@ func parseArgsOrDie() {
 		log.Fatalln("Mask size too small (<=1)")
 	}
 
-	// change what source points to (if specified)
-	if *inputFile != nil {
-		source = *inputFile
+	if *memProfile {
+		defer profile.Start(profile.MemProfile).Stop()
 	}
 
+	if *reduplicate {
+		doReduplication(source, sink)
+	} else {
+		doDeduplication(source, sink)
+	}
+}
+
+// set source/sink (input/output) streams
+// if input is file, output can be file or stdout
+// if input is stdin, output can only be stdout
+func setInputOutpuStreams() {
+	// trivial case
+	if *inputFile == nil {
+		source = os.Stdin
+		sink = os.Stdout
+		return
+	}
+
+	source = *inputFile
+
 	// change what sink points to
-	if *inputFile != nil && *toStdout == false {
+	if *toStdout == false {
 		inFileName := (*inputFile).Name()
 		outFileName := inFileName + ".dd"
 		// TODO: if decompression, strip the 'dd'
@@ -80,7 +87,6 @@ func parseArgsOrDie() {
 		if err != nil {
 			log.Fatalln("Failed to stat input file:", err)
 		}
-
 		out, err := os.OpenFile(outFileName, os.O_CREATE|os.O_RDWR, inStat.Mode())
 		if err != nil {
 			log.Fatalln("Failed to open output file:", err)
@@ -90,9 +96,9 @@ func parseArgsOrDie() {
 }
 
 // Performs deduplication (compression)
-func doDedup(in io.ReadCloser, out io.WriteCloser) {
-	dedup := dedup.NewDeduplicator(*windowSize, uint64((1<<*zeroBits)-1), out)
-	if err := dedup.Do(in); err != nil {
+func doDeduplication(in io.ReadCloser, out io.WriteCloser) {
+	dedup := dedup.NewDeduplicator(*windowSize, uint64((1<<*zeroBits)-1))
+	if err := dedup.Do(in, out); err != nil {
 		log.Fatalln("Failed to parse file:", err)
 	}
 	// Print stats (TODO: make this optional)
@@ -100,9 +106,9 @@ func doDedup(in io.ReadCloser, out io.WriteCloser) {
 }
 
 // Performs reduplication (decompression)
-func doRedup(in io.ReadCloser, out io.WriteCloser) {
-	redup := dedup.NewReduplicator(in)
-	if err := redup.Do(out); err != nil {
+func doReduplication(in io.ReadCloser, out io.WriteCloser) {
+	redup := dedup.NewReduplicator()
+	if err := redup.Do(in, out); err != nil {
 		log.Fatalln("Failed to redup", err)
 	}
 	// Print stats (TODO: make this optional)

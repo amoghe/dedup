@@ -9,23 +9,20 @@ import (
 )
 
 // SegmentHandler is something capable of processing the segments handed to it
-type SegmentHandler interface {
-	Handle([]byte) error
-}
+type SegmentHandler func([]byte) error
 
 // Segmenter segments a file or stream
 type Segmenter struct {
 	WindowSize       uint64
 	Mask             uint64
 	MaxSegmentLength uint64
-	SegHandler       SegmentHandler
 }
 
 // SegmentFile does the actual work of segmenting the specified file as per the
 // params configure in the Segmenter struct
-func (s Segmenter) SegmentFile(file io.ReadCloser) error {
+func (s Segmenter) SegmentFile(file io.ReadCloser, handler SegmentHandler) error {
 
-	if s.SegHandler == nil {
+	if handler == nil {
 		return errors.Errorf("No segment handler specified")
 	}
 
@@ -70,13 +67,13 @@ func (s Segmenter) SegmentFile(file io.ReadCloser) error {
 
 		// If this is a cutpoint, process the curSegment
 		if (uint64(sum) & s.Mask) == 0 {
-			if err := s.SegHandler.Handle(curSegment); err != nil {
+			if err := handler(curSegment); err != nil {
 				return err
 			}
 			curSegment = curSegment[:0] // reset the curSegment accumulator
 		}
 		if uint64(len(curSegment)) >= s.MaxSegmentLength {
-			if err := s.SegHandler.Handle(curSegment); err != nil {
+			if err := handler(curSegment); err != nil {
 				return err
 			}
 			curSegment = curSegment[:0] // reset the curSegment accumulator
@@ -84,7 +81,7 @@ func (s Segmenter) SegmentFile(file io.ReadCloser) error {
 	}
 
 	// Deal with any remaining bytes in curSegment
-	if err := s.SegHandler.Handle(curSegment); err != nil {
+	if err := handler(curSegment); err != nil {
 		return err
 	}
 
