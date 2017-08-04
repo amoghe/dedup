@@ -10,49 +10,40 @@ import (
 
 // Deduplicator performs deduplication of the specified file
 type Deduplicator struct {
-	segmenter Segmenter
-	seghasher hash.Hash
-	writer    codec.Writer
+	segmenter *Segmenter
 	tracker   *SegmentTracker
+	seghasher hash.Hash
 }
 
 // NewDeduplicator returns a Deduplicator
-func NewDeduplicator(winsz, mask uint64, output io.WriteCloser) *Deduplicator {
+func NewDeduplicator(winsz, mask uint64) *Deduplicator {
 	d := Deduplicator{
-		writer:    codec.NewGobWriter(output),
-		segmenter: Segmenter{WindowSize: winsz, Mask: mask},
-		seghasher: sha512.New(),
+		//writer:    codec.NewGobWriter(output),
+		segmenter: &Segmenter{WindowSize: winsz, Mask: mask},
 		tracker:   NewSegmentTracker(),
+		seghasher: sha512.New(),
 	}
-	d.segmenter.SegHandler = &d
+
 	return &d
 }
 
 // Do runs the deduplication of the specified input stream
-func (d *Deduplicator) Do(input io.ReadCloser) error {
-	defer d.writer.Close()
-	return d.segmenter.SegmentFile(input)
-}
+func (d *Deduplicator) Do(input io.ReadCloser, output io.WriteCloser) error {
+	writer := codec.NewGobWriter(output)
+	defer writer.Close()
 
-// Handle allows the Deduplicator to be a SegmentHandler (satisfies interface)
-func (d *Deduplicator) Handle(seg []byte) error {
-	segStat := d.tracker.Track(seg, d.seghasher.Sum(seg))
-
-	var msg codec.Message
-	if segStat.Freq <= 1 {
-		msg = codec.Message{
-			Type:     codec.MessageDef,
-			DefID:    segStat.ID,
-			DefBytes: seg,
+	handler := func(seg []byte) error {
+		stat := d.tracker.Track(seg, d.seghasher.Sum(seg))
+		cmsg := codec.Message{}
+		if stat.Freq <= 1 {
+			cmsg = codec.Message{Type: codec.MessageDef, DefID: stat.ID, DefBytes: seg}
+		} else {
+			cmsg = codec.Message{Type: codec.MessageRef, RefID: stat.ID}
 		}
-	} else {
-		msg = codec.Message{
-			Type:  codec.MessageRef,
-			RefID: segStat.ID,
-		}
+		return writer.Write(&cmsg)
 	}
 
-	return d.writer.Write(&msg)
+	return d.segmenter.SegmentFile(input, handler)
 }
 
 // PrintStats prints stats to the given writer

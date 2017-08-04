@@ -26,9 +26,9 @@ func (d devnull) Write(p []byte) (n int, err error) { return len(p), nil }
 func (d devnull) Close() error                      { return nil }
 
 // NewDiffer returns a Differ
-func NewDiffer(winsz, mask uint64, output io.WriteCloser) *Differ {
+func NewDiffer(winsz, mask uint64) *Differ {
 	return &Differ{
-		dedup:     NewDeduplicator(winsz, mask, devnull{}),
+		dedup:     NewDeduplicator(winsz, mask),
 		segmenter: Segmenter{WindowSize: winsz, Mask: mask},
 		seghasher: sha512.New(),
 	}
@@ -41,13 +41,12 @@ func (d *Differ) MakePatch(old, new io.ReadCloser, out io.WriteCloser) error {
 	defer out.Close()
 
 	// First parse old file and build up the segment state
-	if err := d.dedup.Do(old); err != nil {
+	if err := d.dedup.Do(old, devnull{}); err != nil {
 		return errors.Wrapf(err, "Failed to parse old file")
 	}
 
 	// Now attach the output and parse the new file (with the state we've built)
-	d.dedup.writer = codec.NewGobWriter(out)
-	if err := d.dedup.Do(new); err != nil {
+	if err := d.dedup.Do(new, out); err != nil {
 		return errors.Wrapf(err, "Failed to segment new file")
 	}
 
@@ -62,17 +61,17 @@ func (d *Differ) ApplyPatch(old, patch io.ReadCloser, new io.WriteCloser) error 
 	defer new.Close()
 
 	r, w := io.Pipe()
-	redup := NewReduplicator(r)
-	d.dedup.writer = codec.NewGobWriter(w)
+	redup := NewReduplicator()
+
 	// First parse the 'old' file and build up segment state (in the redup)
-	if err := d.dedup.Do(old); err != nil {
+	if err := d.dedup.Do(old, w); err != nil {
 		return errors.Wrapf(err, "Failed to parse old file")
 	}
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
-		redup.Do(devnull{})
+		redup.Do(r, devnull{})
 		wg.Done()
 	}()
 
