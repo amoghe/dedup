@@ -3,13 +3,11 @@ package codec
 // Writer interface allows callers to write the protocol messages to a sink
 type Writer interface {
 	Write(*Message) error
-	Close()
 }
 
 // Reader interface allows callers to read a stream of protocol messages
 type Reader interface {
 	Read() (Message, error)
-	Close()
 }
 
 const (

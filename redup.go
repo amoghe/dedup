@@ -22,9 +22,8 @@ func NewReduplicator() *Reduplicator {
 }
 
 // Do runs the reduplication writing the output to the output stream
-func (r *Reduplicator) Do(input io.ReadCloser, output io.WriteCloser) error {
+func (r *Reduplicator) Do(input io.Reader, output io.Writer) error {
 	reader := codec.NewGobReader(input)
-	defer reader.Close()
 
 	for {
 		msg, err := reader.Read()
