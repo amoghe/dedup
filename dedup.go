@@ -28,9 +28,8 @@ func NewDeduplicator(winsz, mask uint64) *Deduplicator {
 }
 
 // Do runs the deduplication of the specified input stream
-func (d *Deduplicator) Do(input io.ReadCloser, output io.WriteCloser) error {
+func (d *Deduplicator) Do(input io.Reader, output io.Writer) error {
 	writer := codec.NewGobWriter(output)
-	defer writer.Close()
 
 	handler := func(seg []byte) error {
 		stat := d.tracker.Track(seg, d.seghasher.Sum(seg))

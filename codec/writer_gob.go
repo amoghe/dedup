@@ -10,13 +10,13 @@ import (
 // GobWriter implements SegmentWriter. It writes segments that are gob encoded
 // to a given output stream
 type GobWriter struct {
-	output  io.WriteCloser
+	output  io.Writer
 	encoder *gob.Encoder
 }
 
 // NewGobWriter returns a codec.writer capable of emitting golang/gob encoded
 // messages to the specified output
-func NewGobWriter(output io.WriteCloser) Writer {
+func NewGobWriter(output io.Writer) Writer {
 	return &GobWriter{
 		output:  output,
 		encoder: gob.NewEncoder(output),
@@ -29,10 +29,4 @@ func (g *GobWriter) Write(msg *Message) error {
 		return errors.Wrapf(err, "Failed to encode msg: %v", err)
 	}
 	return nil
-}
-
-// Close closes the output stream
-func (g *GobWriter) Close() {
-	// TODO: g.output.Flush()
-	g.output.Close()
 }
