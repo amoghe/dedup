@@ -45,7 +45,7 @@ func (d *Differ) MakePatch(old, new io.ReadCloser, out io.WriteCloser) error {
 		return errors.Wrapf(err, "Failed to parse old file")
 	}
 
-	// Now attach the output and parse the new file (with the state we've built)
+	// Now parse the new file (with the state we've built)
 	if err := d.dedup.Do(new, out); err != nil {
 		return errors.Wrapf(err, "Failed to segment new file")
 	}
