@@ -19,8 +19,9 @@ type Segmenter struct {
 }
 
 // SegmentFile does the actual work of segmenting the specified file as per the
-// params configure in the Segmenter struct
-func (s Segmenter) SegmentFile(file io.ReadCloser, handler SegmentHandler) error {
+// params configure in the Segmenter struct. It reads the io.Reader till EOF,
+// calling the specified handler each time it finds a segment
+func (s Segmenter) SegmentFile(file io.Reader, handler SegmentHandler) error {
 
 	if handler == nil {
 		return errors.Errorf("No segment handler specified")
