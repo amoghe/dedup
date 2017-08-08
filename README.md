@@ -17,7 +17,21 @@ a downstream compressor often results in much better compression performance
 are the workhorses that actually do all the work. For examples on how to use
 them, see the dedup tool itself (in `cmd/dedup/main.go`).
 
+#### Installation
+
+As with any go(lang) pkg, you can `go get` by
 ```
+shell> go get github.com/amoghe/dedup
+```
+
+#### Usage
+
+```
+import (
+  "github.com/amoghe/dedup"
+)
+
+// somewhere in your code
 err := dedup.NewDeduplicator(windowSize, mask).Do(os.Stdin, os.Stdout)
 
 err := dedup.NewReduplicator().Do(os.Stdin, os.Stdout)
@@ -26,8 +40,23 @@ err := dedup.NewReduplicator().Do(os.Stdin, os.Stdout)
 ## Binary
 
 This codebase also builds a cmdline tool named `dedup` (see `cmd/dedup`) that
-can be used to deduplicate data. For example, consider this workload where we
-save two similar docker containers:
+can be used to deduplicate data.
+
+#### Installation
+
+The tool can be installed by either building from source
+```
+shell> go get github.com/amoghe/dedup && \
+  cd $GOPATH/src/github.com/amoghe/dedup && \
+  go install
+```
+
+Alternatively, you can download a release binary from the Releases section of
+this github project.
+
+#### Usage
+
+Consider this workload where we save two similar docker containers:
 
 ```
 akshay@spitfire:~/$ time docker save redmine bitnami/redmine | gzip | wc --bytes
