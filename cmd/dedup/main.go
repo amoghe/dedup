@@ -17,7 +17,7 @@ import (
 const (
 	// DefaultWindowSize is the window over which to compute rolling fingerprint
 	DefaultWindowSize = "64"
-	// DefaultZeroBits specifies the bitbank which must be 0 to identify a segment boundary
+	// DefaultZeroBits is the bitbank which must be 0 to identify a segment boundary
 	DefaultZeroBits = "16"
 )
 
