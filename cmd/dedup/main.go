@@ -36,6 +36,9 @@ var (
 	toStdout = kingpin.Flag("stdout", "Write to stdout").
 			Short('c').
 			Bool()
+	quiet = kingpin.Flag("quiet", "supress all stats").
+			Short('q').
+			Bool()
 	inputFile = kingpin.Arg("infile", "File to be {de|re}duplicated").
 			File()
 )
@@ -110,8 +113,9 @@ func doDeduplication(in io.Reader, out io.Writer) {
 	if err := dedup.Do(in, out); err != nil {
 		log.Fatalln("Failed to deduplicate:", err)
 	}
-	// Print stats (TODO: make this optional)
-	dedup.PrintStats(os.Stderr)
+	if *quiet == false {
+		dedup.PrintStats(os.Stderr)
+	}
 }
 
 func doReduplication(in io.Reader, out io.Writer) {
@@ -119,6 +123,7 @@ func doReduplication(in io.Reader, out io.Writer) {
 	if err := redup.Do(in, out); err != nil {
 		log.Fatalln("Failed to reduplicate:", err)
 	}
-	// Print stats (TODO: make this optional)
-	// redup.PrintStats()
+	if *quiet == false {
+		// redup.PrintStats()
+	}
 }
