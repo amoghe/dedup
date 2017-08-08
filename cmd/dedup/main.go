@@ -36,7 +36,7 @@ var (
 	toStdout = kingpin.Flag("stdout", "Write to stdout").
 			Short('c').
 			Bool()
-	quiet = kingpin.Flag("quiet", "supress all stats").
+	quiet = kingpin.Flag("quiet", "suppress all stats").
 			Short('q').
 			Bool()
 	inputFile = kingpin.Arg("infile", "File to be {de|re}duplicated").
