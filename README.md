@@ -1,5 +1,7 @@
 # `dedup` - a deduplication tool (+ library)
 
+[travis-ci]:https://travis-ci.org/amoghe/dedup.svg?branch=master
+
 ## Why
 
 Deduplication can be thought of as a coarse grained compression that detects
