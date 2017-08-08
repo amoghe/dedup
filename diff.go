@@ -34,11 +34,9 @@ func NewDiffer(winsz, mask uint64) *Differ {
 	}
 }
 
-// MakePatch writes a "patch" file to the specified WriteCloser
-func (d *Differ) MakePatch(old, new io.ReadCloser, out io.WriteCloser) error {
-	defer old.Close()
-	defer new.Close()
-	defer out.Close()
+// MakePatch writes a "patch" file (betweem "old" and "new") to the specified
+// output WriteCloser
+func (d *Differ) MakePatch(old, new io.Reader, out io.Writer) error {
 
 	// First parse old file and build up the segment state
 	if err := d.dedup.Do(old, devnull{}); err != nil {
