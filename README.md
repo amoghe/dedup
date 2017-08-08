@@ -1,6 +1,6 @@
 # `dedup` - a deduplication tool (+ library)
 
-[travis-ci]:https://travis-ci.org/amoghe/dedup.svg?branch=master
+[![Build Status](https://travis-ci.org/amoghe/dedup.svg?branch=master)](https://travis-ci.org/amoghe/dedup) [![GoDoc](https://godoc.org/github.com/amoghe/dedup?status.svg)](http://godoc.org/github.com/amoghe/dedup)
 
 ## Why
 
