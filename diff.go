@@ -54,29 +54,24 @@ func (d *Differ) MakePatch(old, new io.ReadCloser, out io.WriteCloser) error {
 }
 
 // ApplyPatch applies the patch file to the 'old' and writes the result to 'new'
-func (d *Differ) ApplyPatch(old, patch io.ReadCloser, new io.WriteCloser) error {
-
-	defer old.Close()
-	defer patch.Close()
-	defer new.Close()
+func (d *Differ) ApplyPatch(old, patch io.Reader, new io.Writer) error {
 
 	r, w := io.Pipe()
 	redup := NewReduplicator()
-
-	// First parse the 'old' file and build up segment state (in the redup)
-	if err := d.dedup.Do(old, w); err != nil {
-		return errors.Wrapf(err, "Failed to parse old file")
-	}
-
 	wg := sync.WaitGroup{}
+
 	wg.Add(1)
 	go func() {
 		redup.Do(r, devnull{})
 		wg.Done()
 	}()
 
-	wg.Wait()
-	log.Println("finished parsing original file")
+	// First parse the 'old' file and build up segment state (in the redup)
+	if err := d.dedup.Do(old, w); err != nil {
+		return errors.Wrapf(err, "Failed to parse old file")
+	}
+	w.Close() // close the dummy writer
+	wg.Wait() // wait for dummy redup to be done
 
 	// Next parse the 'patch' file and recreate 'new' using the messages
 	cpatch := codec.NewGobReader(patch)
