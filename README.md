@@ -62,3 +62,8 @@ for this library to provide this functionality.
   by the `Deduplicator`
 - Add progress reporting when input is a large file (not stdin)
 - Make cmdline args fully compatible with other compression tools ('-k', '-v')
+- Add tests! (unit tests, fuzz tests)
+
+## LICENSE
+
+See the LICENSE file
